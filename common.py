@@ -34,5 +34,33 @@ def smug_auth():
         save()
     return smugmug
 
+def album_select(smug, user):
+    albums = smug.albums_get(NickName=user)['Albums']
+    msg = ''
+    while True:
+        for i, a in enumerate(albums):
+            print("%-3s (%s) %s" % (i, '*' if a.get('toggled', False) else ' ', a['Title']))
+
+        print("\nType number to toggle album for deletion. Type 'A' to select all. Enter when finished.")
+        print(msg)
+
+        index = get_input()
+        if index == 'A':
+            for i, a in enumerate(albums):
+                albums[i]['toggled'] = not albums[i].get('toggled', False)
+        elif len(index) == 0:
+            break
+        else:
+            try:
+                index = int(index)
+            except ValueError:
+                msg = "Input a number"
+            try:
+                albums[index]['toggled'] = not albums[index].get('toggled', False)
+            except IndexError:
+                msg = "Input number between 0 and %s" % len(albums)
+        msg = ''
+
+    return filter(lambda a: a.get('toggled', False), albums)
 
 
