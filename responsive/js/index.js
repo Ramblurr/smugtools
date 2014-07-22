@@ -92,7 +92,17 @@ var parseBreakpoints = function() {
     return widths;
 }
 
+var emToPx = function(baseSize, ems) {
+    return ems*baseSize;
+}
+
 var smug_url_re = /(http:\/\/.*\/0)(\/(?:L|M|S|XL)\/)(.*)(-(?:L|M|S|XL))(.jpg)/;
+var getSmugUrl= function(baseUrl, width, density) {
+    var templ = '$1/{W}x{W}/$3-{W}$5';
+    var src_url = baseUrl.replace(smug_url_re, templ.replace(/\{W\}/g, width));
+    return src_url + ' ' + density;
+}
+
 
 var updatePicture = function() {
     var widths = parseBreakpoints();
@@ -117,13 +127,22 @@ var updatePicture = function() {
     var img = '';
     for(var i = 0; i < widths.length;i++) {
         var size = sizes.pop();
-        var src_url = url.replace(smug_url_re, '$1/'+size+'/$3-'+size+'$5');
-        var width = widths[i]['width']+widths[i]['unit'];
-        var sourcetag = $('<source>', { 'srcset':src_url, 'media':'(min-width:'+width+')'});
+        var w  = widths[i]['width'];
+        var w_px = w;
+        var unit  = widths[i]['unit'];
+
+        if( unit == 'em' ) {
+            w_px = emToPx(16, w);
+        }
+
+        var srcsets = [ getSmugUrl(url, w_px, '1x'), getSmugUrl(url, w_px*2, '2x')];
+        var srcset = srcsets.join(', ');
+        var width = w+unit;
+        var sourcetag = $('<source>', { 'srcset':srcset, 'media':'(min-width:'+width+')'});
         embed_code += sep+sourcetag[0].outerHTML;
         picture.append(sourcetag);
-        console.log(src_url);
-        img = $('<img>', {'srcset':src_url}); // set to smallest during last iter
+        console.log(srcset);
+        img = $('<img>', {'srcset':srcset}); // set to smallest during last iter
     };
     embed_code += sep+'<!--[if IE 9]></video><![endif]-->';
     embed_code += sep+img[0].outerHTML;
@@ -180,10 +199,12 @@ $('#formSmug  :input').change(function() {updatePicture();
 });
 
 
+/*
 addBreakpoint(800, 'px');
 addBreakpoint(640, 'px');
 addBreakpoint(480, 'px');
 addBreakpoint(320, 'px');
+*/
 
 /*
 addBreakpoint(1024, 'px');
@@ -191,11 +212,11 @@ addBreakpoint(860, 'px');
 addBreakpoint(640, 'px');
 addBreakpoint(480, 'px');
 */
-/*
+
 addBreakpoint(64, 'em');
 addBreakpoint(40, 'em');
 addBreakpoint(30, 'em');
-*/
+
 
 updatePicture();
 
