@@ -1,3 +1,4 @@
+var SMUGMUG_API_KEY = 'm5ftsO41hLyfkGThVPjRFlk1LIIOIPUc';
 function TrelloClipboard() {
     var me = this;
 
@@ -101,23 +102,42 @@ var getSmugUrl= function(baseUrl, width, density) {
     return src_url + ' ' + density;
 }
 
+var showError = function(error) {
+    $('#urlError').text(error);
+    $('#urlError').removeClass('hide');
+    $('#loading-indicator').addClass('hide');
+}
+
+var clearError = function() {
+    $('#urlError').addClass('hide');
+}
+
 
 var updatePicture = function() {
-    var widths = parseBreakpoints();
+    clearError();
     var url = $('#inputPhoto').val();
+    $('pre').addClass('hide');
+    $('#loading-indicator').removeClass('hide');
+    fetchSmugInfo(url);
+};
+
+var gotGallery = function(url, alb) {
+    var widths = parseBreakpoints();
     var embed_code = '';
     var sep = '\n  ';
     var captionText= $.trim($('#inputCaption').val());
     var doCaption = captionText.length > 0;
 
     if( url.match(smug_url_re) == null ) {
-        $('#urlError').removeClass('hide');
+        showError("<strong>Error</strong>: This isn't a supported SmugMug photo URL.");
         return;
-    } else
-        $('#urlError').addClass('hide');
+    }
+
     if( doCaption ) {
         embed_code += '<figure class="wp-caption aligncenter">\n';
     }
+    var anchor = $('<a>', {href: formatGalleryURL(alb)});
+    embed_code += '<a href="'+formatGalleryURL(alb)+'">';
     embed_code += '<picture>';
     embed_code += sep+'<!--[if IE 9]><video style="display: none;"><![endif]-->';
     var picture = $('<picture>');
@@ -141,22 +161,25 @@ var updatePicture = function() {
         picture.append(sourcetag);
         img = $('<img>', {'srcset':srcset}); // set to smallest during last iter
     };
+    picture.append(img);
     embed_code += sep+'<!--[if IE 9]></video><![endif]-->';
     embed_code += sep+img[0].outerHTML;
     embed_code += '\n</picture>';
+    embed_code += '</a>';
+    anchor.append(picture);
     if( doCaption ) {
         embed_code += '\n<figcaption>{C}</figcaption>';
         embed_code = embed_code.replace('{C}', captionText);
         embed_code += '\n</figure>';
     }
-    picture.append(img);
-    //embed_code = embed_code.replace(/(\r\n|\n|\r)/gm,"");
     $('#code').empty().append(escapeHTML(embed_code)+'\n');
-    $('#picturePreview').empty().append(picture);
+    $('#picturePreview').empty().append(anchor);
     $('#code').each(function(i, block) {
         hljs.highlightBlock(block);
     });
     $('#picturePreview img').addClass('center-block');
+    $('#loading-indicator').addClass('hide');
+    $('pre').removeClass('hide');
     picturefill();
     clipboard();
 }
@@ -195,6 +218,37 @@ $('#inputAdd').click(function() {
 $('#formSmug  :input').change(function() {updatePicture();
 });
 
+var formatGalleryURL = function(alb) {
+    return alb['URL'] + '/' + alb['id'] + '_' + alb['Key'];
+}
+
+var fetchSmugInfo = function(url) {
+    var re = /(http:\/\/.*?\/.*?\/.*?)\/.*?/;
+    var m = url.match(re);
+    if( m == null ) {
+        showError('Invalid SmugMug URL');
+        return;
+    }
+
+    var tree_url = "https://api.smugmug.com/services/api/json/1.3.0/?method=smugmug.users.getTree&APIKey={K}&NickName=elusivetruth&Heavy=true&Callback=?"
+    tree_url = tree_url.replace('{K}', SMUGMUG_API_KEY);
+    $.getJSON(tree_url, function (data) {
+        if( data['stat'] != 'ok' )  {
+            console.log(data);
+            showError('SmugMug API Error');
+            return;
+        }
+        $.each(data['Categories'], function(index, cat) {
+            if( !('Albums' in  cat) ) return;
+            $.each(cat['Albums'], function(index, alb) {
+                if( m[0].indexOf(alb['URL']) > -1 ){
+                    smugmug_gallery = alb;
+                    gotGallery(url, alb);
+                }
+            });
+        });
+    });
+}
 
 /*
 addBreakpoint(800, 'px');
@@ -218,3 +272,5 @@ addBreakpoint(30, 'em');
 updatePicture();
 
 $('#code').tooltip();
+
+

@@ -21,10 +21,6 @@ body {
     margin-bottom: 40px;
 }
 
-pre {
-    padding: 0px;
-}
-
 #breakPointList li button {
     margin-right: 10px;
 }
@@ -42,3 +38,5 @@ pre:hover,
     background-color: #D8D8D8;
 }
 
+#loading-indicator {
+}
