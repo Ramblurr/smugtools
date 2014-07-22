@@ -32,7 +32,6 @@ function TrelloClipboard() {
 
     var keyDonwMonitor = function (e) {
         var code = e.keyCode || e.which;
-        console.log('down');
         if (!(e.ctrlKey || e.metaKey)) {
             return
         }
@@ -46,7 +45,6 @@ function TrelloClipboard() {
         if (document.selection && document.selection.createRange().text) {
             return
         }
-        console.log('wee');
         setTimeout(createTextarea, 0)
     }
 
@@ -141,7 +139,6 @@ var updatePicture = function() {
         var sourcetag = $('<source>', { 'srcset':srcset, 'media':'(min-width:'+width+')'});
         embed_code += sep+sourcetag[0].outerHTML;
         picture.append(sourcetag);
-        console.log(srcset);
         img = $('<img>', {'srcset':srcset}); // set to smallest during last iter
     };
     embed_code += sep+'<!--[if IE 9]></video><![endif]-->';
