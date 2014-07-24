@@ -95,7 +95,7 @@ var emToPx = function(baseSize, ems) {
     return ems*baseSize;
 }
 
-var smug_url_re = /(http:\/\/.*\/0)(\/(?:L|M|S|XL)\/)(.*)(-(?:L|M|S|XL))(.jpg)/;
+var smug_url_re = /(http:\/\/.*\/\d)(\/(?:L|M|S|XL)\/)(.*)(-(?:L|M|S|XL))(.jpg)/;
 var getSmugUrl= function(baseUrl, width, density) {
     var templ = '$1/{W}x{W}/$3-{W}$5';
     var src_url = baseUrl.replace(smug_url_re, templ.replace(/\{W\}/g, width));
