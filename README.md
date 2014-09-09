@@ -1,11 +1,18 @@
 SmugMug Tools
 =============
 
-A collection of python tools for Smugmug.
+A collection of tools for SmugMug.
+
+**Web Based Tools:**
+
+* [HTML5 Reponsive Embeds](https://ramblurr.github.io/smugtools/responsive/) - a utility for embedding your SM images responsively, HTML5 ready!
+* [HTML5 Reponsive Embeds - Wordpress Shortcode](https://ramblurr.github.io/smugtools/responsive/wordpress.html) - a simple no-bells and whistle addon for Wordpress to embed SM images responsively
+
+**Command Line Tools** (advanced users):
 
 * `albumdeleter.py` - interactive utility for batch deleting albums
 
-## Requirements
+## Requirements For CLI Tools
 
 * Smugmug account w/ API key
 

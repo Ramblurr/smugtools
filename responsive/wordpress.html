@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<meta charset="UTF-8">
+
+<title>SmugMug Responsive Embeds for Wordpress</title>
+
+<link rel='stylesheet prefetch' href='https://netdna.bootstrapcdn.com/bootstrap/3.1.1/css/bootstrap.min.css'>
+<link rel='stylesheet prefetch' href='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.0/styles/default.min.css'>
+
+<link rel="stylesheet" href="css/style.css" media="screen" type="text/css" />
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <div id="lead" class="text-center">
+        <h1>SmugMug Responsive Embeds for Wordpress</h1>
+        <p class="lead">Use this tool to embed your SmugMug images responsively in Wordpress using a simple <code>[smugmug]</code> shortcode.</p>
+        <p><code>&lt;picture&gt;</code>, <a href="https://scottjehl.github.io/picturefill/" title="A responsive image polyfill library">Picturefill</a>, and retina ready!</p>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <p>Using this plugin is simple. In fact an example is the best way to demonstrate it. <a href="https://onvagrancy.com/adieu-albania/" title="A Fond Adieu Albania">Click here</a> to see it live!.</p>
+<pre><code class="bbcode">
+[smugmug src="http://photos.onvagrancy.com/Bikerafting-Europe-2013/Albania/i-MDbNBBV/1/L/DSC01786_v1-L.jpg" align="align center"]
+Packrafting on Lake Koman
+[/smugmug]
+</code></pre>
+<p>Available attributes are alt, title, src, align, breakpoints, units, and basesize. The optional caption goes between the open and closing tags.</p>
+        </diV>
+    </diV>
+    <div class="row">
+        <div class="col-md-12">
+            <p>To install simply copy this code into your theme's functions.php file, then edit the two settings at the beginning.</p>
+            <pre><code class="php" id="code" data-toggle="tooltip" data-placement="top" title="Press Ctrl+C to Copy">
+/* RESPONSIVE SMUG MUG EMBEDDiNG */* RESPONSIVE SMUG MUG EMBEDDiNG *//
+// Change these settings
+global $SMUGMUG_ACCOUNT = 'YOUR-ACCOUNT-NICK-NAME';
+global $SMUGMUG_API_KEY = 'YOUR-API-KEY';
+
+// do not edit below this line
+// ---------------------------
+
+function smugmug_url( $baseurl, $width, $density ) {
+    $smug_url_re = '/(http:\/\/.*\/\d)(\/(?:L|M|S|XL)\/)(.*)(-(?:L|M|S|XL))(.jpg)/';
+    $templ = '$1/{W}x{W}/$3-{W}$5';
+    $dim = str_replace('{W}', $width, $templ);
+    $src_url = preg_replace($smug_url_re, $dim, $baseurl);
+    return $src_url . ' ' . $density;
+}
+
+function smugmug_get_tree($bust_cache = false) {
+    $smug_transient = 'smugmug_user_tree';
+    if ( false === ( $tree = get_transient( $smug_transient ) ) || $bust_cache ) {
+        $api_url = sprintf('https://api.smugmug.com/services/api/php/1.3.0/?method=smugmug.users.getTree&APIKey=%s&NickName=%s&Heavy=true', $SMUGMUG_API_KEY, $SMUGMUG_ACCOUNT);
+        $result = wp_remote_get( $api_url, array( 'timeout' => 10));
+        if ( is_wp_error($result) ) {
+            echo $result->get_error_message();
+            return false;
+        }
+        $parsed = unserialize($result['body']);
+        if ( is_wp_error($parsed) ) {
+            echo $parsed->get_error_message();
+            return false;
+        }
+        if ($parsed['stat'] != 'ok') {
+            return false;
+        }
+        $tree = $parsed;
+        set_transient( $smug_transient, $tree, 60*60*12 ); /* 12 hours */
+    }
+    return $tree;
+}
+
+function smugmug_format_gallery_url($url, $tree) {
+    $re = "/(http:\\/\\/.*?\\/.*?\\/.*?)\\/.*?/";
+    if( preg_match($re, $url, $matches) != 1 )
+        return "";
+    foreach( $tree['Categories'] as $cat ) {
+        if( !array_key_exists('Albums', $cat) ) continue;
+        foreach( $cat['Albums'] as $alb) {
+            if( strstr($alb['URL'], $matches[1]) )
+                return $alb['URL'] . '/' . $alb['id'] . '_' . $alb['Key'];
+        }
+    }
+    return "";
+}
+
+function smugmug_responsive_shortcode( $atts , $content = null ) {
+    extract( shortcode_atts(
+        array(
+            'breakpoints' => '64,40,30',
+            'units' => 'em',
+            'basesize' => '16',
+            'caption' => '',
+            'src' => '',
+            'alt' => '',
+            'title' => '',
+            'align' => 'aligncenter'
+        ), $atts )
+    );
+    $content = trim($content);
+    if(empty($caption) && empty($src)) {
+        $src = $caption;
+    } else if( !empty($src) && empty($caption) ) {
+        $caption = $content;
+    } else if( empty($src) && !empty($caption) ) {
+        $src = $content;
+    } else if( !empty($src) && !empty($caption) ) {
+        return "SMUGMUG ERROR: use src or caption attributes, not both";
+    }
+    if( !$tree = smugmug_get_tree() ) {
+        return "SMUGMUG API ERROR";
+    }
+    $gallery_url = smugmug_format_gallery_url( $src, $tree );
+    if( !$gallery_url ) {
+        if( !$tree = smugmug_get_tree(true) ) {
+            return "SMUGMUG API ERROR (cached busted)";
+        }
+    }
+    $gallery_url = smugmug_format_gallery_url( $src, $tree );
+    $breakpoints = explode(',', $breakpoints);
+    $source_tags = array();
+    $img_tag = '';
+    foreach( $breakpoints as $bp ) {
+        $width_px = $bp;
+        if( $units == 'em' ) {
+            $width_px = $bp*$basesize;
+        }
+        $srcsets = array( smugmug_url($src, $width_px, '1x'), smugmug_url($src, $width_px*2, '2x'));
+        $srcset = join(', ', $srcsets);
+        $width = $bp . $units;
+        $source_tag_fmt = '<source srcset="%s" media="(min-width: %s)">';
+        $source_tag = sprintf($source_tag_fmt, $srcset, $width);
+        $source_tags[] = $source_tag;
+        $img_tag_fmt = '<img itemprop="contentUrl" srcset="%s" alt="%s" title="%s">';
+        $img_tag = sprintf($img_tag_fmt, $srcset, esc_attr($alt), esc_attr($title));
+    }
+    $picture_tag_fmt = '<picture><!--[if IE 9]><video style="display: none;"><![endif]-->%s<!--[if IE 9]></video><![endif]-->%s</picture>';
+    $picture_tag = sprintf($picture_tag_fmt, join('', $source_tags), $img_tag);
+    $anchor_fmt = '<a href="%s">%s</a>';
+    if( !empty($gallery_url) ) {
+        $picture_tag = sprintf($anchor_fmt, $gallery_url, $picture_tag);
+    }
+    if( !empty($caption) ) {
+        $figure_tag_fmt = '<figure itemscope itemtype="http://schema.org/ImageObject" class="wp-caption %s">%s<figcaption itemprop="caption">%s</figcaption></figure>';
+        return sprintf($figure_tag_fmt, esc_attr($align), $picture_tag, $caption);
+    }
+    return $picture_tag;
+}
+add_shortcode( 'smugmug', 'smugmug_responsive_shortcode' );
+?>
+            </code></pre>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12" id="picturePreview"></div>
+    </div>
+</div><!-- /.container -->
+
+
+<div class="footer">
+    <div class="container">
+        <p class="text-muted">©2014 <a href="https://twitter.com/Ramblurr" title="Casey Link's Twitter">Casey Link</a></p>
+    </div>
+</div>
+
+<script src='https://codepen.io/assets/libs/fullpage/jquery.js'></script>
+<script src='https://netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js'></script><script src='https://scottjehl.github.io/picturefill/dist/picturefill.js'></script><script src='https://cdnjs.cloudflare.com/ajax/libs/highlight.js/8.0/highlight.min.js'></script>
+<script>hljs.initHighlightingOnLoad();</script>
+<script src="js/clip.js"></script>
+
+</body>
+
+</html>
