@@ -116,9 +116,10 @@ var clearError = function() {
 var updatePicture = function() {
     clearError();
     var url = $('#inputPhoto').val();
+    var account = $('#account').val();
     $('pre').addClass('hide');
     $('#loading-indicator').removeClass('hide');
-    fetchSmugInfo(url);
+    fetchSmugInfo(account, url);
 };
 
 var gotGallery = function(url, alb) {
@@ -222,7 +223,7 @@ var formatGalleryURL = function(alb) {
     return alb['URL'] + '/' + alb['id'] + '_' + alb['Key'];
 }
 
-var fetchSmugInfo = function(url) {
+var fetchSmugInfo = function(account, url) {
     var re = /(http:\/\/.*?\/.*?\/.*?)\/.*?/;
     var m = url.match(re);
     if( m == null ) {
@@ -230,8 +231,9 @@ var fetchSmugInfo = function(url) {
         return;
     }
 
-    var tree_url = "https://api.smugmug.com/services/api/json/1.3.0/?method=smugmug.users.getTree&APIKey={K}&NickName=elusivetruth&Heavy=true&Callback=?"
+    var tree_url = "https://api.smugmug.com/services/api/json/1.3.0/?method=smugmug.users.getTree&APIKey={K}&NickName={A}&Heavy=true&Callback=?"
     tree_url = tree_url.replace('{K}', SMUGMUG_API_KEY);
+    tree_url = tree_url.replace('{A}', account);
     $.getJSON(tree_url, function (data) {
         if( data['stat'] != 'ok' )  {
             console.log(data);
